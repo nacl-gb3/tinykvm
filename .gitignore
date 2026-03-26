@@ -21,3 +21,5 @@ crash-*
 
 compile_commands.json
 test_programs/
+logs
+.cache
