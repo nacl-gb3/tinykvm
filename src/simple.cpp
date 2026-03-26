@@ -90,6 +90,16 @@ int main(int argc, char **argv) {
     static const std::vector<std::string> allowed_readable_paths({
         argv[1],
         ".",
+
+        // process information
+        //"/proc/self/exe", // causes SIGSEGV when uncommented 
+        "/proc/self/cmdline",
+        "/proc/self/environ",
+        //"/proc/self/fd/4096", // causes SIGSEGV when uncommented
+         
+        "/etc/ld.so.preload", 
+        "/etc/ld.so.cache", 
+
         // Add all common standard libraries to the list of allowed readable
         // paths
         "/lib64/ld-linux-x86-64.so.2",
@@ -102,6 +112,11 @@ int main(int argc, char **argv) {
         "/lib64/librt.so.1",
         "/lib64/libz.so.1",
         "/lib64/libexpat.so.1",
+
+        "/lib64/glibc-hwcaps/x86-64-v2/",
+        "/lib64/glibc-hwcaps/x86-64-v3/",
+        "/lib64/glibc-hwcaps/x86-64-v4/",
+
         "/lib64/glibc-hwcaps/x86-64-v2/libc.so.6",
         "/lib64/glibc-hwcaps/x86-64-v3/libc.so.6",
         "/lib64/glibc-hwcaps/x86-64-v4/libc.so.6",
@@ -138,6 +153,24 @@ int main(int argc, char **argv) {
         "/lib64/glibc-hwcaps/x86-64-v2/libattr.so.1",
         "/lib64/glibc-hwcaps/x86-64-v3/libattr.so.1",
         "/lib64/glibc-hwcaps/x86-64-v4/libattr.so.1",
+
+        // libasan
+        "/lib64/libasan.so.8",
+        "/lib64/glibc-hwcaps/x86-64-v2/libasan.so.8",
+        "/lib64/glibc-hwcaps/x86-64-v3/libasan.so.8",
+        "/lib64/glibc-hwcaps/x86-64-v4/libasan.so.8",
+
+        // libm
+        "/lib64/libm.so.6",
+        "/lib64/glibc-hwcaps/x86-64-v2/libm.so.6",
+        "/lib64/glibc-hwcaps/x86-64-v3/libm.so.6",
+        "/lib64/glibc-hwcaps/x86-64-v4/libm.so.6",
+
+        // libubsan
+        "/lib64/libubsan.so.1",
+        "/lib64/glibc-hwcaps/x86-64-v2/libubsan.so.1",
+        "/lib64/glibc-hwcaps/x86-64-v3/libubsan.so.1",
+        "/lib64/glibc-hwcaps/x86-64-v4/libubsan.so.1",
     });
     master_vm.fds().set_open_readable_callback([&](std::string &path) -> bool {
       return std::find(allowed_readable_paths.begin(),
