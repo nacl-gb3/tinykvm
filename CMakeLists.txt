@@ -45,11 +45,12 @@ add_executable(pipekvm
 )
 target_link_libraries(pipekvm tinykvm)
 
-add_executable(shm_demo
+add_executable(shmdemo
 	src/shm.cpp
+	src/sandbox.cpp
 )
-target_link_libraries(shm_demo tinykvm)
+target_link_libraries(shmdemo tinykvm)
 
-add_executable(hello_shm
-	src/hello_shm.c
-)
+#add_executable(helloshm
+#	src/hello_shm.c
+#)

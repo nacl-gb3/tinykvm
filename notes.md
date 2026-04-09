@@ -18,3 +18,11 @@ are not identical (convert ptr to terms )
 triaging
 * try to find smallest point of change
 * HOW TO SET UP SHARED MEMORY
+
+4/9/26
+file path based sharing will work
+
+TODO:
+figure out what tinykvm filtering is doing
+* maybe kvm is limiting things
+

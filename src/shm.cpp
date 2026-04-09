@@ -1,7 +1,6 @@
-#include "assert.hpp"
 #include "sandbox.hpp"
 #include "shm_lib.h"
-#include <cstdint>
+#include <cerrno>
 #include <cstdio>
 #include <fcntl.h>
 #include <iostream>
@@ -24,7 +23,7 @@ ImageHeader *sb_parse_image_header(struct sandbox *sb, char *in) {
 
 void sb_parse_image_body(struct sandbox *sb, char *in, ImageHeader *header,
                          OnProgress *on_progress, char *out) {
-  parse_image_body(in, header, on_progress, out);
+  // parse_image_body(in, header, on_progress, out);
 }
 
 void image_parsing_progress(unsigned int progress) {
@@ -39,23 +38,27 @@ void get_image_bytes(char *input_stream) {
 // An example application that simulates a typical image parsing program
 // The library simulates a typilcal image decoding library such as libjpeg
 int main(int argc, char const *argv[]) {
+  int err = 0;
   /* HIGH LEVEL IDEA */
 
   // source for shared memory setup: shm_open man page
   int fd;
   struct shmbuf *shmp;
 
-  char shmpath[] = "/my_shm";
+  char shmpath[] = "/shm_my";
 
-  fd = shm_open(shmpath, O_CREAT | O_EXCL | O_RDWR, 0600);
+  std::cout << "shm_open\n";
+  fd = shm_open(shmpath, O_CREAT | O_EXCL | O_RDWR, 0777);
   if (fd == -1)
     errExit("shm_open");
 
+  std::cout << "ftruncate\n";
   if (ftruncate(fd, sizeof(struct shmbuf)) == -1)
     errExit("ftruncate");
 
   /* Map the object into the caller's address space. */
 
+  std::cout << "mmap\n";
   shmp = (struct shmbuf *)mmap(NULL, sizeof(*shmp), PROT_READ | PROT_WRITE,
                                MAP_SHARED, fd, 0);
   if (shmp == MAP_FAILED)
@@ -74,8 +77,15 @@ int main(int argc, char const *argv[]) {
     return errno;
   } else if (!sandbox_fd) {
     /* Step 2: Run the vmsetup code from simple.cpp and fix bugs as needed */
-    sandbox_run(shmpath);
+    //char *args[3] = {"./hello_shm", shmpath, nullptr};
+    //int err = execv("./hello_shm", args);
+    err = sandbox_run(shmpath);
+    perror("hello_shm");
+    sem_post(&shmp->sem1);
+    shm_unlink(shmpath);
+    return err;
   }
+  std::cout << "successful fork\n";
 
   /* Wait for 'sem1' to be posted by peer before touching
      shared memory. */
@@ -133,5 +143,5 @@ int main(int argc, char const *argv[]) {
 
   shm_unlink(shmpath);
 
-  return 0;
+  return err;
 }
