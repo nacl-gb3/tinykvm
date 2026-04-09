@@ -31,15 +31,11 @@ static uint64_t verify_exists(tinykvm::Machine &vm, const char *name) {
 inline timespec time_now();
 inline long nanodiff(timespec start_time, timespec end_time);
 
-int sandbox_run(int to_fd, int from_fd) {
-  uint8_t *from_sm = (uint8_t *)mmap(NULL, 1024 * 4, PROT_READ | PROT_WRITE,
-                                     MAP_SHARED, from_fd, 0);
-  uint8_t *to_sm =
-      (uint8_t *)mmap(NULL, 1024 * 4, PROT_READ, MAP_SHARED, to_fd, 0);
-
+int sandbox_run(char const *shmpath) {
+  char prog[] = "./hello_shm";
   std::vector<uint8_t> binary;
   std::vector<std::string> args;
-  std::string filename = "/path/to/sandbox/so";
+  std::string filename = prog;
   binary = load_file(filename);
 
   const tinykvm::DynamicElf dyn_elf = tinykvm::is_dynamic_elf(
@@ -51,7 +47,8 @@ int sandbox_run(int to_fd, int from_fd) {
     args.push_back(ld_linux_so);
   }
 
-  args.push_back("/path/to/sandbox/so");
+  args.push_back(prog);
+  args.push_back(shmpath);
 
   tinykvm::Machine::init();
 
@@ -96,8 +93,10 @@ int sandbox_run(int to_fd, int from_fd) {
   // master_vm.print_pagetables();
   if (dyn_elf.is_dynamic) {
     // TODO: figure out how to automate this
+    // allow reads from following paths
     static const std::vector<std::string> allowed_readable_paths({
-        "/path/to/sandbox/so",
+        prog,
+        shmpath,
         ".",
 
         // process information
@@ -144,6 +143,16 @@ int sandbox_run(int to_fd, int from_fd) {
       return std::find(allowed_readable_paths.begin(),
                        allowed_readable_paths.end(),
                        path) != allowed_readable_paths.end();
+    });
+
+    // allow writes to shared memory
+    static const std::vector<std::string> allowed_writable_paths({
+        shmpath,
+    });
+    master_vm.fds().set_open_writable_callback([&](std::string &path) -> bool {
+      return std::find(allowed_writable_paths.begin(),
+                       allowed_writable_paths.end(),
+                       path) != allowed_writable_paths.end();
     });
   }
 

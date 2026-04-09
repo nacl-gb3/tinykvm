@@ -44,3 +44,12 @@ add_executable(pipekvm
 	src/pipe.cpp
 )
 target_link_libraries(pipekvm tinykvm)
+
+add_executable(shm_demo
+	src/shm.cpp
+)
+target_link_libraries(shm_demo tinykvm)
+
+add_executable(hello_shm
+	src/hello_shm.c
+)
