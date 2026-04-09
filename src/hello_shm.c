@@ -14,15 +14,20 @@ int main(int argc, char **argv) {
   int fd;
   struct shmbuf *shmp;
 
+  fprintf(stderr, "check args\n");
   if (argc < 1) {
     errExit("args");
   }
 
   char *shmpath = argv[1];
 
-  fd = shm_open(shmpath, O_RDWR, 0);
-  if (fd == -1)
+  fprintf(stderr, "%s\n", shmpath);
+
+  fd = shm_open(shmpath, O_RDWR, 0777);
+  if (fd == -1) {
+    fprintf(stderr, "%d\n", errno);
     errExit("shm_open");
+  } 
 
   shmp = (struct shmbuf *)mmap(NULL, sizeof(*shmp), PROT_READ | PROT_WRITE,
                                MAP_SHARED, fd, 0);

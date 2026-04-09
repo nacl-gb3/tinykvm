@@ -10,6 +10,7 @@
 #include <cstring>
 #include <fcntl.h>
 #include <iostream>
+#include <sstream>
 #include <stdlib.h>
 #include <sys/mman.h>
 #include <tinykvm/machine.hpp>
@@ -91,12 +92,15 @@ int sandbox_run(char const *shmpath) {
   };
   tinykvm::Machine master_vm{binary, options};
   // master_vm.print_pagetables();
+  std::stringstream ss;
+  ss << "/dev/shm" << shmpath;
+  std::string abs_shmpath = ss.str();
   if (dyn_elf.is_dynamic) {
     // TODO: figure out how to automate this
     // allow reads from following paths
     static const std::vector<std::string> allowed_readable_paths({
         prog,
-        shmpath,
+        abs_shmpath,
         ".",
 
         // process information
@@ -147,7 +151,7 @@ int sandbox_run(char const *shmpath) {
 
     // allow writes to shared memory
     static const std::vector<std::string> allowed_writable_paths({
-        shmpath,
+        abs_shmpath,
     });
     master_vm.fds().set_open_writable_callback([&](std::string &path) -> bool {
       return std::find(allowed_writable_paths.begin(),

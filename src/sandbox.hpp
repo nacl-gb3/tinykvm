@@ -1,4 +1,5 @@
-#pragma once
+#ifndef SANDBOX_H
+#define SANDBOX_H
 
 #include <semaphore.h>
 #include <stddef.h>
@@ -8,6 +9,7 @@
 
 #define errExit(msg)                                                           \
   do {                                                                         \
+    printf("%d\n", errno);                                                     \
     perror(msg);                                                               \
     exit(EXIT_FAILURE);                                                        \
   } while (0)
@@ -25,3 +27,4 @@ struct shmbuf {
 };
 
 int sandbox_run(char const *);
+#endif
