@@ -11,6 +11,7 @@
   do {                                                                         \
     printf("%d\n", errno);                                                     \
     perror(msg);                                                               \
+    shm_uninit();                                                              \
     exit(EXIT_FAILURE);                                                        \
   } while (0)
 
@@ -20,23 +21,23 @@
    memory object */
 
 struct intermem {
-  uint8_t *buf;
-  size_t size;
+  uint8_t buf[BUF_SIZE];
+  // size_t size;
 };
 
 struct shmbuf {
   // replace with monitors
-  sem_t *sem1;        /* POSIX unnamed semaphore */
-  sem_t *sem2;        /* POSIX unnamed semaphore */
-  int fd;             /* file descriptior */
-  struct intermem im; /* memory buffer */
+  sem_t sem1; /* POSIX unnamed semaphore */
+  sem_t sem2; /* POSIX unnamed semaphore */
+  int fd;     /* file descriptior */
+  struct intermem im;
 };
 
 #define BASE_INTERMEM_SIZE 4096
 
-int shm_init(size_t);
+int shm_init();
 int sandbox_run();
-void get_shm_obj(struct shmbuf *);
-int shm_obj_free(struct shmbuf *);
+struct shmbuf *get_shm_obj();
+int shm_uninit();
 
 #endif

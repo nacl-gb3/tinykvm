@@ -39,14 +39,14 @@ void get_image_bytes(char *input_stream) {
 // The library simulates a typilcal image decoding library such as libjpeg
 int main(int argc, char const *argv[]) {
   int err = 0;
-  /* HIGH LEVEL IDEA */
+  struct shmbuf *shmp;
 
-  /* Map the object into the caller's address space. */
+  std::string shmpath = "/sbshm";
 
   char str[6] = "hello";
   size_t len = 6;
 
-  err = shm_init(1);
+  err = shm_init();
   if (err) {
     perror("shm_init");
     return err;
@@ -66,30 +66,27 @@ int main(int argc, char const *argv[]) {
   }
   std::cout << "successful fork\n";
 
-  struct shmbuf shm;
-  get_shm_obj(&shm);
-
-  printf("0x%lx\n", (size_t)shm.sem1);
+  shmp = get_shm_obj();
 
   std::cout << "attempting to strlcpy\n";
-  memcpy(shm.im.buf, str, len);
+  memcpy(shmp->im.buf, str, len);
 
   // pass control to the sandbox runtime
   std::cout << "passing control to sandbox\n";
-  if (sem_post(shm.sem1) == -1) {
+  if (sem_post(&shmp->sem1) == -1) {
     perror("sem_post to_guest");
     return -1;
   }
 
   // return control to program
-  // if (sem_wait(shm.sem2) == -1) {
-  //   perror("sem_wait from_guest");
-  //   return -1;
-  // }
+  if (sem_wait(&shmp->sem2) == -1) {
+    perror("sem_wait from_guest");
+    return -1;
+  }
 
   std::cout << "control returned from sandbox\n";
 
-  std::cout << (char *)shm.im.buf << "\n";
+  std::cout << (char *)shmp->im.buf << "\n";
 
   // print shared result
 
@@ -136,7 +133,7 @@ int main(int argc, char const *argv[]) {
   delete[] output_stream;
   */
 
-  shm_obj_free(&shm);
+  err = shm_uninit();
 
   return err;
 }
