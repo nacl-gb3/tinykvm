@@ -33,45 +33,38 @@ static uint64_t verify_exists(tinykvm::Machine &vm, const char *name) {
   return addr;
 }
 
+struct shmbuf *shmp;
+std::string shmpath;
+
 inline timespec time_now();
 inline long nanodiff(timespec start_time, timespec end_time);
 
-struct shmbuf shm;
-std::atomic_uint64_t shm_ref_cnt;
+int shm_init() {
+  shmpath = "/sbshm";
 
-int shm_init(size_t im_page_cnt) {
-  shm.sem1 = (sem_t *)malloc(sizeof(sem_t));
-  shm.sem2 = (sem_t *)malloc(sizeof(sem_t));
+  int fd = shm_open(shmpath.c_str(), O_CREAT | O_EXCL | O_RDWR, 0600);
+  if (fd == -1) {
+    errExit("shm_open");
+  }
 
-  if (sem_init(shm.sem1, 1, 0) == -1) {
+  if (ftruncate(fd, sizeof(struct shmbuf)) == -1)
+    errExit("ftruncate");
+
+  shmp = (struct shmbuf *)mmap(NULL, sizeof(*shmp), PROT_READ | PROT_WRITE,
+                               MAP_SHARED, fd, 0);
+  if (shmp == MAP_FAILED)
+    errExit("mmap");
+
+  if (sem_init(&shmp->sem1, 1, 0) == -1) {
     fprintf(stderr, "sem1 init failed\n");
     return -1;
   }
-  if (sem_init(shm.sem2, 1, 0) == -1) {
+  if (sem_init(&shmp->sem2, 1, 0) == -1) {
     fprintf(stderr, "sem2 init failed\n");
     return -1;
   }
 
-  shm.fd = open("/tmp/shm", O_RDWR | O_CREAT, S_IRWXU);
-  if (shm.fd == -1) {
-    fprintf(stderr, "open for shared memory failed\n");
-    return -1;
-  }
-
-  shm.im.size = im_page_cnt * BASE_INTERMEM_SIZE;
-
-  if (ftruncate(shm.fd, shm.im.size) == -1) {
-    fprintf(stderr, "ftruncate for shm fd failed\n");
-    return -1;
-  }
-
-  shm.im.buf = (uint8_t *)mmap(NULL, shm.im.size, PROT_READ | PROT_WRITE,
-                               MAP_SHARED, shm.fd, 0);
-
-  printf("0x%lx\n", (size_t)shm.sem1);
-  shm_ref_cnt++;
-
-  return (shm.im.buf == NULL);
+  return 0;
 }
 
 int sandbox_run() {
@@ -91,7 +84,6 @@ int sandbox_run() {
   }
 
   args.push_back(prog);
-  args.push_back((char *)shm.im.size);
 
   tinykvm::Machine::init();
 
@@ -107,13 +99,13 @@ int sandbox_run() {
           uint64_t addr = (uint64_t)regs.rdi;
           size_t len = (size_t)regs.rsi;
 
-          if (sem_wait(shm.sem1) == -1) {
+          if (sem_wait(&shmp->sem1) == -1) {
             perror("sem_wait");
             regs.rax = errno;
           } else {
             // TODO: think of ways that things can go wrong and
             // handle them
-            cpu.machine().copy_to_guest(addr, shm.im.buf, len);
+            cpu.machine().copy_to_guest(addr, shmp->im.buf, len);
             regs.rax = 0;
           }
           cpu.set_registers(regs);
@@ -128,9 +120,9 @@ int sandbox_run() {
 
           // TODO: think of ways that things can go wrong and
           // handle them
-          cpu.machine().copy_from_guest(shm.im.buf, addr, len);
+          cpu.machine().copy_from_guest(shmp->im.buf, addr, len);
 
-          if (sem_post(shm.sem2) == -1) {
+          if (sem_post(&shmp->sem2) == -1) {
             perror("sem_post");
             regs.rax = errno;
           } else {
@@ -273,31 +265,23 @@ int sandbox_run() {
   return master_vm.return_value();
 }
 
-void get_shm_obj(struct shmbuf *nshm) {
-  nshm->sem1 = shm.sem1;
-  nshm->sem2 = shm.sem2;
-  nshm->fd = shm.fd;
-  nshm->im = {
-      .buf = (uint8_t *)mmap(NULL, shm.im.size, PROT_READ | PROT_WRITE,
-                             MAP_SHARED, shm.fd, 0),
-
-      .size = shm.im.size,
-  };
-
-  printf("0x%lx\n", (size_t)nshm->im.buf);
-
-  shm_ref_cnt++;
-}
-
-int shm_obj_free(struct shmbuf *fshm) {
-  int res = munmap(fshm->im.buf, fshm->im.size);
-  shm_ref_cnt--;
-  if (shm_ref_cnt == 0) {
-    free(shm.sem1);
-    free(shm.sem2);
+struct shmbuf *get_shm_obj() {
+  int fd = shm_open(shmpath.c_str(), O_RDWR, 0777);
+  if (fd == -1) {
+    fprintf(stderr, "%d\n", errno);
+    errExit("shm_open");
   }
-  return res;
+
+  struct shmbuf *shmp = (struct shmbuf *)mmap(
+      NULL, sizeof(*shmp), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+  if (shmp == MAP_FAILED) {
+    errExit("mmap");
+  }
+
+  return shmp;
 }
+
+int shm_uninit() { return shm_unlink(shmpath.c_str()); }
 
 timespec time_now() {
   timespec t;
