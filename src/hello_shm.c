@@ -37,23 +37,13 @@ int main(int argc, char **argv) {
 
   char str[11] = "hello back";
   memcpy(im.buf, str, 11);
+  /* replace with switch statement to call into sample library */
 
   // TODO: vmcall to send data back to host
   err = syscall(COPY_TO_HOST, im.buf, BUF_SIZE);
   if (err == -1) {
     errExit("COPY_TO_HOST");
   }
-
-  // if (sem_post(&shmp->sem1) == -1)
-  //   errExit("sem_post");
-
-  /* Wait until peer says that it has finished accessing
-     the shared memory. \*/
-
-  //  if (sem_wait(&shmp->sem2) == -1)
-  //    errExit("sem_wait");
-
-  /* Write modified data in shared memory to standard output. */
 
   return 0;
 }
