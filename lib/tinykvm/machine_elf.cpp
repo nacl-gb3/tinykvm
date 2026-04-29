@@ -276,6 +276,7 @@ uint64_t Machine::address_of(std::string_view name,
   if (binary.empty())
     binary = this->m_binary;
   const auto *sym = resolve_symbol(binary, name.data());
+  // printf("function found: %b\n", sym != 0);
   return (sym) ? this->m_image_base + sym->st_value : 0x0;
 }
 uint64_t Machine::address_of(std::string_view name,
