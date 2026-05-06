@@ -26,5 +26,8 @@ int print_from_host(char *words) {
 
 int main(int argc, char **argv) {
   fprintf(stderr, "%s\n", "things initialized");
+  // TODO: don't quite let main exit
+  // __start is the function that runs first, which itself calls
+  // main
   return 0;
 }
